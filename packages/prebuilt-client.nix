@@ -51,6 +51,7 @@ let
         --prefix XDG_DATA_DIRS : "$out/share"
     '';
 
+    passthru.extracted = linuxContents;
     inherit meta;
   };
 

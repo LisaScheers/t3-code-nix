@@ -125,6 +125,13 @@ jobs:
               electron="$(grep -m 1 -- '-electron-[0-9]' <<<"$closure")"
               test -x "$electron/bin/electron"
               ELECTRON_RUN_AS_NODE=1 "$electron/bin/electron" --version
+            elif [[ "$SYSTEM" == *-linux ]]; then
+              extracted="$(nix build --no-link --print-out-paths ".#packages.$SYSTEM.$package.extracted")"
+              test -x "$extracted/t3code"
+              LD_LIBRARY_PATH="$extracted/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+                T3CODE_DISABLE_AUTO_UPDATE=1 \
+                ELECTRON_RUN_AS_NODE=1 \
+                "$extracted/t3code" --version
             else
               HOME="$(mktemp -d)" ELECTRON_RUN_AS_NODE=1 "$output/bin/t3code" --version
             fi
