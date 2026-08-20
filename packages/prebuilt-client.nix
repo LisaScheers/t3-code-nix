@@ -72,8 +72,11 @@ let
     installPhase = ''
       runHook preInstall
 
-      mkdir -p "$out/Applications" "$out/bin"
-      mv ${lib.escapeShellArg appName} "$out/Applications/"
+      mkdir -p "$out/Applications" "$out/bin" "$out/libexec"
+      # macOS may protect real Applications/*.app directories with com.apple.macl,
+      # which prevents Nix from normalizing their permissions.
+      mv ${lib.escapeShellArg appName} "$out/libexec/t3code"
+      ln -s ../libexec/t3code "$out/Applications/${appName}"
       makeWrapper \
         "$out/Applications/${appName}/Contents/MacOS/${executable}" \
         "$out/bin/t3code" \
