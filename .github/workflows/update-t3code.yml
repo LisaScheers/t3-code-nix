@@ -1,0 +1,48 @@
+name: update T3 Code releases
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Release channel to update
+        type: choice
+        options: [all, stable, nightly]
+        default: all
+  schedule:
+    - cron: "17 * * * *"
+
+jobs:
+  update:
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.channel != 'all' && format('["{0}"]', inputs.channel) || '["stable", "nightly"]') }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: accept-flake-config = true
+      - name: Refresh ${{ matrix.channel }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: nix develop -c ./scripts/update-releases "${{ matrix.channel }}"
+      - name: Open or update the channel pull request
+        id: pull-request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.T3CODE_UPDATE_TOKEN }}
+          branch: automation/update-${{ matrix.channel }}
+          delete-branch: false
+          commit-message: "chore: update T3 Code ${{ matrix.channel }}"
+          title: "chore: update T3 Code ${{ matrix.channel }}"
+          body: |
+            Updates the pinned T3 Code ${{ matrix.channel }} client and server release.
+
+            The updater verified the npm package, GitHub tag, required desktop artifacts, and all Nix dependency hashes before changing the repository.
+          labels: dependencies,automated
+      - name: Enable squash auto-merge
+        if: steps.pull-request.outputs.pull-request-number != ''
+        env:
+          GH_TOKEN: ${{ secrets.T3CODE_UPDATE_TOKEN }}
+        run: gh pr merge "${{ steps.pull-request.outputs.pull-request-number }}" --auto --squash

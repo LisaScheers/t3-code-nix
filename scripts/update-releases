@@ -1,0 +1,323 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  echo "usage: $0 stable|nightly|all" >&2
+  exit 2
+}
+
+requested="${1:-all}"
+case "$requested" in
+  stable | nightly | all) ;;
+  *) usage ;;
+esac
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+for command in curl jq nix npm sed; do
+  if ! command -v "$command" >/dev/null; then
+    echo "missing required command: $command" >&2
+    exit 1
+  fi
+done
+
+temporary_directory="$(mktemp -d)"
+trap 'rm -rf "$temporary_directory"' EXIT
+
+github_headers=()
+if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+  github_headers=(-H "Authorization: Bearer $GITHUB_TOKEN")
+fi
+
+curl_json() {
+  curl \
+    --fail \
+    --silent \
+    --show-error \
+    --location \
+    --max-time 60 \
+    -H "Accept: application/json" \
+    "$1"
+}
+
+curl_github_json() {
+  curl \
+    --fail \
+    --silent \
+    --show-error \
+    --location \
+    --max-time 60 \
+    -H "Accept: application/vnd.github+json" \
+    "${github_headers[@]}" \
+    "$1"
+}
+
+hex_to_sri() {
+  local hexadecimal="$1"
+  local converted
+  if converted="$(nix hash convert --hash-algo sha256 --to sri "$hexadecimal" 2>/dev/null)"; then
+    printf '%s\n' "$converted"
+  else
+    nix hash to-sri --type sha256 "$hexadecimal"
+  fi
+}
+
+asset_record() {
+  local release_json="$1"
+  local asset_name="$2"
+  local url digest hexadecimal hash
+  url="$(jq -r --arg name "$asset_name" '.assets[] | select(.name == $name) | .browser_download_url' <<<"$release_json")"
+  digest="$(jq -r --arg name "$asset_name" '.assets[] | select(.name == $name) | .digest // empty' <<<"$release_json")"
+
+  if [[ -z "$url" ]]; then
+    echo "release is missing $asset_name" >&2
+    return 1
+  fi
+
+  if [[ "$digest" == sha256:* ]]; then
+    hexadecimal="${digest#sha256:}"
+    hash="$(hex_to_sri "$hexadecimal")"
+  else
+    hash="$(nix store prefetch-file --json "$url" | jq -r .hash)"
+  fi
+
+  jq -n --arg url "$url" --arg hash "$hash" '{ url: $url, hash: $hash }'
+}
+
+fake_hash_build() {
+  local expression="$1"
+  local output hash
+  set +e
+  output="$(nix build --no-link --impure --expr "$expression" 2>&1)"
+  set -e
+
+  hash="$(sed -n 's/^[[:space:]]*got: \(sha256-[A-Za-z0-9+/=]*\)$/\1/p' <<<"$output" | tail -n 1)"
+  if [[ -z "$hash" ]]; then
+    echo "$output" >&2
+    echo "could not determine the dependency hash" >&2
+    return 1
+  fi
+  printf '%s\n' "$hash"
+}
+
+repo_root_json="$(jq -Rn --arg value "$repo_root" '$value')"
+
+prefetch_pnpm_hash() {
+  local version="$1"
+  local source_hash="$2"
+  local expression
+  expression="$(cat <<EOF
+let
+  flake = builtins.getFlake ("path:" + ${repo_root_json});
+  pkgs = import flake.inputs.nixpkgs.outPath { system = builtins.currentSystem; };
+  src = pkgs.fetchFromGitHub {
+    owner = "pingdotgg";
+    repo = "t3code";
+    tag = "v${version}";
+    hash = "${source_hash}";
+  };
+in
+pkgs.fetchPnpmDeps {
+  inherit src;
+  pname = "t3code-source";
+  version = "${version}";
+  pnpm = pkgs.pnpm_11;
+  fetcherVersion = 4;
+  pnpmWorkspaces = [
+    "@t3tools/monorepo"
+    "t3..."
+    "@t3tools/desktop..."
+    "@t3tools/scripts..."
+  ];
+  hash = pkgs.lib.fakeHash;
+}
+EOF
+)"
+  fake_hash_build "$expression"
+}
+
+prefetch_cargo_hash() {
+  local version="$1"
+  local source_hash="$2"
+  local expression
+  expression="$(cat <<EOF
+let
+  flake = builtins.getFlake ("path:" + ${repo_root_json});
+  pkgs = import flake.inputs.nixpkgs.outPath { system = builtins.currentSystem; };
+  src = pkgs.fetchFromGitHub {
+    owner = "pingdotgg";
+    repo = "t3code";
+    tag = "v${version}";
+    hash = "${source_hash}";
+  };
+in
+pkgs.rustPlatform.fetchCargoVendor {
+  inherit src;
+  sourceRoot = "source/native/resource-monitor";
+  hash = pkgs.lib.fakeHash;
+}
+EOF
+)"
+  fake_hash_build "$expression"
+}
+
+dist_tags="$(curl_json 'https://registry.npmjs.org/-/package/t3/dist-tags')"
+release_data="$(nix eval --impure --json --expr 'import ./releases.nix')"
+updated_channels=()
+
+if [[ "$requested" == all ]]; then
+  channels=(stable nightly)
+else
+  channels=("$requested")
+fi
+
+for channel in "${channels[@]}"; do
+  if [[ "$channel" == stable ]]; then
+    dist_tag="latest"
+  else
+    dist_tag="nightly"
+  fi
+
+  version="$(jq -r --arg tag "$dist_tag" '.[$tag]' <<<"$dist_tags")"
+  current_version="$(jq -r --arg channel "$channel" '.[$channel].version' <<<"$release_data")"
+  if [[ "$version" == "$current_version" ]]; then
+    echo "$channel is current at $version"
+    continue
+  fi
+
+  if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.]+)?$ ]]; then
+    echo "npm returned an invalid $channel version: $version" >&2
+    exit 1
+  fi
+
+  tag="v$version"
+  github_release="$(curl_github_json "https://api.github.com/repos/pingdotgg/t3code/releases/tags/$tag")"
+  github_tag="$(jq -r .tag_name <<<"$github_release")"
+  npm_version="$(curl_json "https://registry.npmjs.org/t3/$version" | jq -r .version)"
+  if [[ "$github_tag" != "$tag" || "$npm_version" != "$version" ]]; then
+    echo "release mismatch: npm=$npm_version github=$github_tag expected=$version" >&2
+    exit 1
+  fi
+
+  for required_asset in \
+    "T3-Code-$version-arm64.zip" \
+    "T3-Code-$version-x64.zip" \
+    "T3-Code-$version-x86_64.AppImage" \
+    "T3-Code-$version-x64.exe"; do
+    if ! jq -e --arg name "$required_asset" '.assets[] | select(.name == $name)' <<<"$github_release" >/dev/null; then
+      echo "$tag is incomplete: missing $required_asset" >&2
+      exit 1
+    fi
+  done
+
+  darwin_asset="$(asset_record "$github_release" "T3-Code-$version-arm64.zip")"
+  linux_asset="$(asset_record "$github_release" "T3-Code-$version-x86_64.AppImage")"
+  source_url="https://github.com/pingdotgg/t3code/archive/refs/tags/$tag.tar.gz"
+  source_hash="$(nix store prefetch-file --json --unpack "$source_url" | jq -r .hash)"
+  pnpm_hash="$(prefetch_pnpm_hash "$version" "$source_hash")"
+  cargo_hash="$(prefetch_cargo_hash "$version" "$source_hash")"
+
+  package_json="$(curl_json "https://raw.githubusercontent.com/pingdotgg/t3code/$tag/package.json")"
+  desktop_package_json="$(curl_json "https://raw.githubusercontent.com/pingdotgg/t3code/$tag/apps/desktop/package.json")"
+  server_package_json="$(curl_json "https://raw.githubusercontent.com/pingdotgg/t3code/$tag/apps/server/package.json")"
+  pnpm_version="$(jq -r '.packageManager | sub("^pnpm@"; "")' <<<"$package_json")"
+  electron_version="$(jq -r '.dependencies.electron' <<<"$desktop_package_json")"
+  anthropic_sdk_version="$(jq -r '.dependencies["@anthropic-ai/claude-agent-sdk"] | sub("^[^0-9]*"; "")' <<<"$server_package_json")"
+
+  npm_project="$temporary_directory/npm/$channel"
+  mkdir -p "$npm_project"
+  jq -n \
+    --arg name "t3code-server-$channel-nix" \
+    --arg version "$version" \
+    --arg anthropicSdkVersion "$anthropic_sdk_version" \
+    '{
+      name: $name,
+      private: true,
+      version: $version,
+      dependencies: { t3: $version },
+      overrides: { "@anthropic-ai/claude-agent-sdk": $anthropicSdkVersion }
+    }' \
+    >"$npm_project/package.json"
+  (
+    cd "$npm_project"
+    npm install \
+      --package-lock-only \
+      --ignore-scripts \
+      --no-audit \
+      --no-fund \
+      >/dev/null
+  )
+  npm_hash="$(nix run --inputs-from "$repo_root" nixpkgs#prefetch-npm-deps -- "$npm_project/package-lock.json" | tail -n 1)"
+
+  record="$(
+    jq -n \
+      --arg version "$version" \
+      --arg tag "$tag" \
+      --arg srcHash "$source_hash" \
+      --arg pnpmHash "$pnpm_hash" \
+      --arg cargoHash "$cargo_hash" \
+      --arg npmHash "$npm_hash" \
+      --arg pnpmVersion "$pnpm_version" \
+      --arg electronVersion "$electron_version" \
+      --argjson darwin "$darwin_asset" \
+      --argjson linux "$linux_asset" \
+      '{
+        version: $version,
+        tag: $tag,
+        srcHash: $srcHash,
+        pnpmHash: $pnpmHash,
+        cargoHash: $cargoHash,
+        npmHash: $npmHash,
+        pnpmVersion: $pnpmVersion,
+        electronVersion: $electronVersion,
+        client: {
+          "aarch64-darwin": $darwin,
+          "x86_64-linux": $linux
+        }
+      }'
+  )"
+  release_data="$(jq --arg channel "$channel" --argjson record "$record" '.[$channel] = $record' <<<"$release_data")"
+  updated_channels+=("$channel")
+done
+
+if [[ "${#updated_channels[@]}" -eq 0 ]]; then
+  exit 0
+fi
+
+jq -r '
+  def record($release):
+    "  version = \($release.version | @json);\n" +
+    "  tag = \($release.tag | @json);\n" +
+    "  srcHash = \($release.srcHash | @json);\n" +
+    "  pnpmHash = \($release.pnpmHash | @json);\n" +
+    "  cargoHash = \($release.cargoHash | @json);\n" +
+    "  npmHash = \($release.npmHash | @json);\n" +
+    "  pnpmVersion = \($release.pnpmVersion | @json);\n" +
+    "  electronVersion = \($release.electronVersion | @json);\n" +
+    "  client = {\n" +
+    "    \"aarch64-darwin\" = {\n" +
+    "      url = \($release.client[\"aarch64-darwin\"].url | @json);\n" +
+    "      hash = \($release.client[\"aarch64-darwin\"].hash | @json);\n" +
+    "    };\n" +
+    "    \"x86_64-linux\" = {\n" +
+    "      url = \($release.client[\"x86_64-linux\"].url | @json);\n" +
+    "      hash = \($release.client[\"x86_64-linux\"].hash | @json);\n" +
+    "    };\n" +
+    "  };\n";
+
+  "# Generated by scripts/update-releases. Do not edit release hashes by hand.\n" +
+  "{\n" +
+  "  stable = {\n" + record(.stable) + "  };\n\n" +
+  "  nightly = {\n" + record(.nightly) + "  };\n" +
+  "}\n"
+' <<<"$release_data" >"$temporary_directory/releases.nix"
+
+nix-instantiate --parse "$temporary_directory/releases.nix" >/dev/null
+install -m644 "$temporary_directory/releases.nix" releases.nix
+for channel in "${updated_channels[@]}"; do
+  install -m644 "$temporary_directory/npm/$channel/package.json" "packages/npm/$channel/package.json"
+  install -m644 "$temporary_directory/npm/$channel/package-lock.json" "packages/npm/$channel/package-lock.json"
+done
+
+echo "updated ${updated_channels[*]} release data"

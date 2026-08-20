@@ -1,0 +1,131 @@
+name: flake check
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: accept-flake-config = true
+      - name: Evaluate every system
+        run: nix flake check --all-systems --no-build
+      - name: Check formatting and dead code
+        run: |
+          mapfile -d '' nix_files < <(git ls-files --cached --others --exclude-standard -z -- '*.nix')
+          nix fmt -- --check "${nix_files[@]}"
+          nix develop -c deadnix --fail "${nix_files[@]}"
+          nix develop -c shellcheck scripts/update-releases
+          git diff --check
+      - uses: DeterminateSystems/flake-checker-action@main
+
+  packages:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            system: x86_64-linux
+            clients: t3code t3code-nightly t3code-source t3code-nightly-source
+            servers: t3code-server t3code-server-nightly t3code-server-source t3code-server-nightly-source
+          - runner: ubuntu-24.04-arm
+            system: aarch64-linux
+            clients: t3code-source t3code-nightly-source
+            servers: t3code-server t3code-server-nightly t3code-server-source t3code-server-nightly-source
+          - runner: macos-14
+            system: aarch64-darwin
+            clients: t3code t3code-nightly t3code-source t3code-nightly-source
+            servers: t3code-server t3code-server-nightly t3code-server-source t3code-server-nightly-source
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: accept-flake-config = true
+      - name: Build clients and servers
+        env:
+          CLIENTS: ${{ matrix.clients }}
+          SERVERS: ${{ matrix.servers }}
+          SYSTEM: ${{ matrix.system }}
+        run: |
+          attributes=()
+          for package in $CLIENTS $SERVERS; do
+            attributes+=(".#packages.$SYSTEM.$package")
+          done
+          nix build --no-link "${attributes[@]}"
+      - name: Check recorded versions
+        env:
+          CLIENTS: ${{ matrix.clients }}
+          SERVERS: ${{ matrix.servers }}
+          SYSTEM: ${{ matrix.system }}
+        run: |
+          stable="$(nix eval --impure --raw --expr '(import ./releases.nix).stable.version')"
+          nightly="$(nix eval --impure --raw --expr '(import ./releases.nix).nightly.version')"
+          for package in $CLIENTS $SERVERS; do
+            actual="$(nix eval --raw ".#packages.$SYSTEM.$package.version")"
+            case "$package" in
+              *nightly*) expected="$nightly" ;;
+              *) expected="$stable" ;;
+            esac
+            test "$actual" = "$expected"
+          done
+      - name: Start each server
+        env:
+          SERVERS: ${{ matrix.servers }}
+          SYSTEM: ${{ matrix.system }}
+        run: |
+          for package in $SERVERS; do
+            output="$(nix build --no-link --print-out-paths ".#packages.$SYSTEM.$package")"
+            state="$(mktemp -d)"
+            port="$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()')"
+            HOME="$state" "$output/bin/t3" serve --host 127.0.0.1 --port "$port" --base-dir "$state/data" "$state" >"$state/server.log" 2>&1 &
+            pid=$!
+            ready=false
+            for _ in $(seq 1 30); do
+              if grep -q 'T3 Code server is ready\.' "$state/server.log" \
+                && python3 -c 'import socket, sys; socket.create_connection(("127.0.0.1", int(sys.argv[1])), 2).close()' "$port"; then
+                ready=true
+                break
+              fi
+              if ! kill -0 "$pid" 2>/dev/null; then
+                break
+              fi
+              sleep 1
+            done
+            kill "$pid" 2>/dev/null || true
+            for _ in $(seq 1 10); do
+              kill -0 "$pid" 2>/dev/null || break
+              sleep 0.1
+            done
+            kill -KILL "$pid" 2>/dev/null || true
+            wait "$pid" || true
+            if [[ "$ready" != true ]]; then
+              cat "$state/server.log"
+              exit 1
+            fi
+          done
+      - name: Load each desktop executable
+        env:
+          CLIENTS: ${{ matrix.clients }}
+          SYSTEM: ${{ matrix.system }}
+        run: |
+          for package in $CLIENTS; do
+            output="$(nix build --no-link --print-out-paths ".#packages.$SYSTEM.$package")"
+            test -x "$output/bin/t3code"
+            grep -a -q 'T3CODE_DISABLE_AUTO_UPDATE' "$output/bin/t3code"
+            if [[ "$package" == *source ]]; then
+              closure="$(nix-store --query --requisites "$output")"
+              electron="$(grep -m 1 -- '-electron-[0-9]' <<<"$closure")"
+              test -x "$electron/bin/electron"
+              ELECTRON_RUN_AS_NODE=1 "$electron/bin/electron" --version
+            else
+              HOME="$(mktemp -d)" ELECTRON_RUN_AS_NODE=1 "$output/bin/t3code" --version
+            fi
+          done
