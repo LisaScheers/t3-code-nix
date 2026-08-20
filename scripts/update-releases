@@ -92,7 +92,7 @@ fake_hash_build() {
   output="$(nix build --no-link --impure --expr "$expression" 2>&1)"
   set -e
 
-  hash="$(sed -n 's/^[[:space:]]*got: \(sha256-[A-Za-z0-9+/=]*\)$/\1/p' <<<"$output" | tail -n 1)"
+  hash="$(sed -n 's/.*got:[[:space:]]*\(sha256-[A-Za-z0-9+/=]*\).*/\1/p' <<<"$output" | tail -n 1)"
   if [[ -z "$hash" ]]; then
     echo "$output" >&2
     echo "could not determine the dependency hash" >&2
@@ -297,12 +297,12 @@ jq -r '
     "  electronVersion = \($release.electronVersion | @json);\n" +
     "  client = {\n" +
     "    \"aarch64-darwin\" = {\n" +
-    "      url = \($release.client[\"aarch64-darwin\"].url | @json);\n" +
-    "      hash = \($release.client[\"aarch64-darwin\"].hash | @json);\n" +
+    "      url = " + ($release.client["aarch64-darwin"].url | @json) + ";\n" +
+    "      hash = " + ($release.client["aarch64-darwin"].hash | @json) + ";\n" +
     "    };\n" +
     "    \"x86_64-linux\" = {\n" +
-    "      url = \($release.client[\"x86_64-linux\"].url | @json);\n" +
-    "      hash = \($release.client[\"x86_64-linux\"].hash | @json);\n" +
+    "      url = " + ($release.client["x86_64-linux"].url | @json) + ";\n" +
+    "      hash = " + ($release.client["x86_64-linux"].hash | @json) + ";\n" +
     "    };\n" +
     "  };\n";
 
