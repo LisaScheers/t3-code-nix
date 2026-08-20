@@ -285,7 +285,7 @@ if [[ "${#updated_channels[@]}" -eq 0 ]]; then
   exit 0
 fi
 
-jq -r '
+jq -j '
   def record($release):
     "  version = \($release.version | @json);\n" +
     "  tag = \($release.tag | @json);\n" +
@@ -313,6 +313,7 @@ jq -r '
   "}\n"
 ' <<<"$release_data" >"$temporary_directory/releases.nix"
 
+nixfmt "$temporary_directory/releases.nix"
 nix-instantiate --parse "$temporary_directory/releases.nix" >/dev/null
 install -m644 "$temporary_directory/releases.nix" releases.nix
 for channel in "${updated_channels[@]}"; do
