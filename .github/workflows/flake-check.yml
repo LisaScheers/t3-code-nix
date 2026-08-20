@@ -128,7 +128,7 @@ jobs:
             elif [[ "$SYSTEM" == *-linux ]]; then
               extracted="$(nix build --no-link --print-out-paths ".#packages.$SYSTEM.$package.extracted")"
               test -x "$extracted/AppRun"
-              APPDIR="$extracted" ELECTRON_RUN_AS_NODE=1 "$extracted/AppRun" --version
+              T3CODE_DISABLE_AUTO_UPDATE=1 APPDIR="$extracted" ELECTRON_RUN_AS_NODE=1 "$extracted/AppRun" --version
             else
               HOME="$(mktemp -d)" ELECTRON_RUN_AS_NODE=1 "$output/bin/t3code" --version
             fi
