@@ -1,9 +1,9 @@
 {
   "name": "t3code-server-nightly-nix",
   "private": true,
-  "version": "0.0.34-nightly.20260822.1160",
+  "version": "0.0.34-nightly.20260822.1162",
   "dependencies": {
-    "t3": "0.0.34-nightly.20260822.1160"
+    "t3": "0.0.34-nightly.20260822.1162"
   },
   "overrides": {
     "@anthropic-ai/claude-agent-sdk": "0.3.170"
