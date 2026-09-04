@@ -2,7 +2,7 @@
   cacert,
   cctools,
   copyDesktopItems,
-  electron_41,
+  electron,
   fetchFromGitHub,
   fetchPnpmDeps,
   installShellFiles,
@@ -23,7 +23,6 @@
 }:
 let
   appName = "T3 Code (Alpha)";
-  electron = electron_41;
   pnpm = pnpm_11;
   src = fetchFromGitHub {
     owner = "pingdotgg";

@@ -11,8 +11,12 @@ let
       serverName = if isStable then "t3code-server" else "t3code-server-nightly";
       sourceClientName = if isStable then "t3code-source" else "t3code-nightly-source";
       sourceServerName = if isStable then "t3code-server-source" else "t3code-server-nightly-source";
+      electronPackage = "electron_${lib.versions.major release.electronVersion}";
+      electron =
+        pkgs.${electronPackage}
+          or (throw "T3 Code ${release.version} requires ${electronPackage}, which is missing from nixpkgs");
 
-      sourceUnwrapped = pkgs.callPackage ./source/unwrapped.nix { inherit release; };
+      sourceUnwrapped = pkgs.callPackage ./source/unwrapped.nix { inherit electron release; };
       resourceMonitor = pkgs.callPackage ./source/resource-monitor.nix {
         inherit release sourceUnwrapped;
       };
