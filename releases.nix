@@ -6,7 +6,7 @@
     srcHash = "sha256-YV86WqqpGQwjeovXB0IoE3f/o4IUC5DDVdBEdT4xzjc=";
     pnpmHash = "sha256-gEY2em9pNTC1EuVX0V3L/Wu1apZ+BKBXxALEcPQ/pwA=";
     cargoHash = "sha256-5cmG2daM1bVOA23gjjoalbx0fEL1hmqV6WZov0sUZp8=";
-    npmHash = "sha256-/qKih8zGzfdjNiahjHrRDUjvPLuKWruQLYTiglO03N8=";
+    npmHash = "sha256-dSWq1aevZsoFLDPxfKE/sw9R6zm1bbLj0gk/VpUH1yY=";
     pnpmVersion = "11.10.0";
     electronVersion = "44.1.0";
     client = {
@@ -27,7 +27,7 @@
     srcHash = "sha256-z9PMJbIJjeUtvUcRQdrOmeYqsU0uUsnACq4OoJxNPBg=";
     pnpmHash = "sha256-/eu7Y1TTvVRp/7bHzXKkWMKwdvZR4IFjGYOe4Q6W+DU=";
     cargoHash = "sha256-5cmG2daM1bVOA23gjjoalbx0fEL1hmqV6WZov0sUZp8=";
-    npmHash = "sha256-L0J5LZINmvnjbLtL650gM3lCbfyVem7CI/l/P25gRgA=";
+    npmHash = "sha256-6+K2AcagWtlRvHV5OpQzuvspKanaYnSzAdaW5QnkEc8=";
     pnpmVersion = "11.10.0";
     electronVersion = "44.1.0";
     client = {

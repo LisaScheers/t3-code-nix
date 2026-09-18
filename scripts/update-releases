@@ -242,7 +242,6 @@ for channel in "${channels[@]}"; do
   (
     cd "$npm_project"
     npm install \
-      --package-lock-only \
       --ignore-scripts \
       --no-audit \
       --no-fund \
