@@ -30,6 +30,12 @@ let
     inherit (release) tag;
     hash = release.srcHash;
   };
+  spdxLicenseData = fetchFromGitHub {
+    owner = "spdx";
+    repo = "license-list-data";
+    rev = "c4a7237ec8f4654e867546f9f409749300f1bf4c";
+    hash = "sha256-FbeeEBAg9ih6DkAsXdU6ruZwkC7A2u2zYBvblpl54q0=";
+  };
   desktopIcon =
     if stdenv.hostPlatform.isDarwin then
       "assets/prod/black-macos-1024.png"
@@ -49,6 +55,10 @@ stdenv.mkDerivation (finalAttrs: {
     substituteInPlace apps/web/vite.config.ts \
       --replace-fail 'const host = explicitHost || "localhost";' \
                      'const host = explicitHost || "127.0.0.1";'
+
+    mkdir -p .generated/third-party-licenses/spdx/v3.28.0
+    cp ${spdxLicenseData}/json/details/*.json \
+      .generated/third-party-licenses/spdx/v3.28.0/
   '';
 
   nativeBuildInputs = [
