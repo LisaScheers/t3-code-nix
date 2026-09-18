@@ -13,6 +13,7 @@ buildNpmPackage {
   src = npmProject;
   nodejs = nodejs_24;
   npmDepsHash = release.npmHash;
+  npmFlags = [ "--ignore-scripts" ];
   dontNpmBuild = true;
   nativeBuildInputs = [ makeWrapper ];
 
