@@ -6,6 +6,7 @@
   nodejs_24,
   stdenv,
   channel,
+  npmLock,
   npmProject,
   release,
 }:
@@ -18,8 +19,7 @@ let
     }
     .${stdenv.hostPlatform.system};
   platformPackage =
-    (builtins.fromJSON (builtins.readFile "${npmProject}/package-lock.json"))
-    .packages."node_modules/@t3code/t3-${npmPlatform}";
+    (builtins.fromJSON (builtins.readFile npmLock)).packages."node_modules/@t3code/t3-${npmPlatform}";
   platformArchive = fetchurl {
     url = platformPackage.resolved;
     hash = platformPackage.integrity;
