@@ -8,10 +8,12 @@
   installShellFiles,
   lib,
   libicns,
+  libsecret,
   makeBinaryWrapper,
   makeDesktopItem,
   node-gyp,
   nodejs_24,
+  pkg-config,
   pnpm_11,
   pnpmBuildHook,
   pnpmConfigHook,
@@ -72,13 +74,18 @@ stdenv.mkDerivation (finalAttrs: {
     pnpmConfigHook
     python3
   ]
-  ++ lib.optionals stdenv.hostPlatform.isLinux [ copyDesktopItems ]
+  ++ lib.optionals stdenv.hostPlatform.isLinux [
+    copyDesktopItems
+    pkg-config
+  ]
   ++ lib.optionals stdenv.hostPlatform.isDarwin [
     cctools.libtool
     libicns
     writeDarwinBundle
     xcbuild
   ];
+
+  buildInputs = lib.optionals stdenv.hostPlatform.isLinux [ libsecret ];
 
   pnpmWorkspaces = [
     "@t3tools/monorepo"
