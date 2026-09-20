@@ -28,7 +28,6 @@ let
       };
       prebuiltServer = pkgs.callPackage ./prebuilt-server.nix {
         inherit channel release;
-        npmProject = ./npm + "/${channel}";
         npmLock = if isStable then ./npm/stable/package-lock.json else ./npm/nightly/package-lock.json;
       };
       hasPrebuiltClient = builtins.hasAttr pkgs.stdenv.hostPlatform.system release.client;

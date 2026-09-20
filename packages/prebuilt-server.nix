@@ -1,5 +1,4 @@
 {
-  buildNpmPackage,
   fetchurl,
   lib,
   makeWrapper,
@@ -7,10 +6,11 @@
   stdenv,
   channel,
   npmLock,
-  npmProject,
   release,
 }:
 let
+  packages = (builtins.fromJSON (builtins.readFile npmLock)).packages;
+  cliPackage = packages."node_modules/t3";
   npmPlatform =
     {
       aarch64-darwin = "darwin-arm64";
@@ -18,31 +18,34 @@ let
       x86_64-linux = "linux-x64";
     }
     .${stdenv.hostPlatform.system};
-  platformPackage =
-    (builtins.fromJSON (builtins.readFile npmLock)).packages."node_modules/@t3code/t3-${npmPlatform}";
+  platformPackage = packages."node_modules/@t3code/t3-${npmPlatform}";
   platformArchive = fetchurl {
     url = platformPackage.resolved;
     hash = platformPackage.integrity;
   };
 in
-buildNpmPackage {
+stdenv.mkDerivation {
   pname = if channel == "stable" then "t3code-server" else "t3code-server-nightly";
   inherit (release) version;
-  src = npmProject;
-  nodejs = nodejs_24;
-  npmDepsHash = release.npmHash;
-  dontNpmBuild = true;
+  src = fetchurl {
+    url = cliPackage.resolved;
+    hash = cliPackage.integrity;
+  };
+  dontBuild = true;
   nativeBuildInputs = [ makeWrapper ];
 
   installPhase = ''
     runHook preInstall
 
-    mkdir -p "$out/lib/t3code" "$out/bin"
+    mkdir -p "$out/lib/t3code/node_modules/t3" "$out/bin"
+    cp -r . "$out/lib/t3code/node_modules/t3/"
+    # The platform archive already bundles its runtime dependencies. Installing
+    # it directly avoids npm pruning bundles for other operating systems/libcs.
     mkdir -p "node_modules/@t3code/t3-${npmPlatform}"
     tar -xzf ${platformArchive} \
       --strip-components=1 \
       -C "node_modules/@t3code/t3-${npmPlatform}"
-    cp -r node_modules "$out/lib/t3code/"
+    cp -r node_modules/@t3code "$out/lib/t3code/node_modules/"
     makeWrapper ${lib.getExe nodejs_24} "$out/bin/t3" \
       --add-flags "$out/lib/t3code/node_modules/t3/dist/bin.mjs" \
       --set T3CODE_DISABLE_AUTO_UPDATE 1
