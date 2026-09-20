@@ -32,6 +32,8 @@ stdenv.mkDerivation {
     hash = cliPackage.integrity;
   };
   dontBuild = true;
+  # Stripping the compiled executable removes its embedded application payload.
+  dontStrip = true;
   nativeBuildInputs = [ makeWrapper ];
 
   installPhase = ''
