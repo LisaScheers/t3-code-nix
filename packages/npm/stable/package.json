@@ -1,11 +1,11 @@
 {
   "name": "t3code-server-stable-nix",
   "private": true,
-  "version": "0.0.42",
+  "version": "0.0.44",
   "dependencies": {
-    "t3": "0.0.42"
+    "t3": "0.0.44"
   },
   "overrides": {
-    "@anthropic-ai/claude-agent-sdk": "0.3.260"
+    "@anthropic-ai/claude-agent-sdk": "0.3.276"
   }
 }
