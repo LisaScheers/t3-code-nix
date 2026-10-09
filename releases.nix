@@ -22,22 +22,22 @@
   };
 
   nightly = {
-    version = "0.0.46-nightly.20261008.2849";
-    tag = "v0.0.46-nightly.20261008.2849";
-    srcHash = "sha256-bE2FH19L3mEcCeYUmdlfsHDbPqIYni6bVQmVD39reL4=";
-    pnpmHash = "sha256-iRr6b3NzhYDb+dKdlZxE0XZ8UpXWDjFfk+K6h/fPkOU=";
+    version = "0.0.46-nightly.20261009.2861";
+    tag = "v0.0.46-nightly.20261009.2861";
+    srcHash = "sha256-V4wxw9wrWTAoFpNHmtEQhRHsDwlyf2n3RL/Nj+dxXyc=";
+    pnpmHash = "sha256-G3EHVkAEJrl2eOd6dvLjUfwmAurHvq2FZyYM92SFFmE=";
     cargoHash = "sha256-5cmG2daM1bVOA23gjjoalbx0fEL1hmqV6WZov0sUZp8=";
-    npmHash = "sha256-HRHPi4FZ5CurC+RwjjuNaQxm9twZeMRADRXka6AaoBw=";
+    npmHash = "sha256-uaOylk9//giZpy9sjEKPYp3RszXa+MeIdbr5P+PR1T0=";
     pnpmVersion = "11.10.0";
-    electronVersion = "44.4.2";
+    electronVersion = "44.4.5";
     client = {
       "aarch64-darwin" = {
-        url = "https://github.com/pingdotgg/t3code/releases/download/v0.0.46-nightly.20261008.2849/T3-Code-0.0.46-nightly.20261008.2849-arm64.zip";
-        hash = "sha256-X9eZ4DKcJ0khEzhsU/5/Li3Ey1IzSyOGJRVGTQAHjvg=";
+        url = "https://github.com/pingdotgg/t3code/releases/download/v0.0.46-nightly.20261009.2861/T3-Code-0.0.46-nightly.20261009.2861-arm64.zip";
+        hash = "sha256-O4ejoa5OanDZg2agFkvQ4tX41wONCfxyVYtfiJjAAl8=";
       };
       "x86_64-linux" = {
-        url = "https://github.com/pingdotgg/t3code/releases/download/v0.0.46-nightly.20261008.2849/T3-Code-0.0.46-nightly.20261008.2849-x86_64.AppImage";
-        hash = "sha256-lfX0aZhbkB9h8paXhZGlCMqIHz5uRoTf1+w1oYwMr28=";
+        url = "https://github.com/pingdotgg/t3code/releases/download/v0.0.46-nightly.20261009.2861/T3-Code-0.0.46-nightly.20261009.2861-x86_64.AppImage";
+        hash = "sha256-TjnfWAhwSGZKMY/GmoOVJncmXLn2sTUB/gG4FfL0ux4=";
       };
     };
   };
