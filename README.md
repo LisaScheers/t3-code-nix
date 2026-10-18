@@ -16,7 +16,7 @@ Auto-update is disabled because the flake owns upgrades.
 | Prebuilt server | Yes | Yes | Yes |
 | Source server | Yes | Yes | Yes |
 
-Upstream does not publish an ARM Linux desktop artifact. Use
+The flake provides the ARM Linux desktop client through source builds. Use
 `packageVariant = "source"` on `aarch64-linux`. Intel macOS is intentionally
 outside the flake's declared systems.
 
