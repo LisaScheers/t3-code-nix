@@ -55,9 +55,6 @@ let
     inherit meta;
   };
 
-  appName =
-    if lib.hasInfix "-nightly." version then "T3 Code (Nightly).app" else "T3 Code (Alpha).app";
-  executable = lib.removeSuffix ".app" appName;
   darwinPackage = stdenvNoCC.mkDerivation {
     inherit pname src version;
     nativeBuildInputs = [
@@ -73,12 +70,16 @@ let
       runHook preInstall
 
       mkdir -p "$out/Applications" "$out/bin" "$out/libexec"
+      app="$(find . -maxdepth 1 -type d -name '*.app' -print -quit)"
+      test -n "$app"
+      app_name="$(basename "$app")"
+      executable="''${app_name%.app}"
       # macOS may protect real Applications/*.app directories with com.apple.macl,
       # which prevents Nix from normalizing their permissions.
-      mv ${lib.escapeShellArg appName} "$out/libexec/t3code"
-      ln -s ../libexec/t3code "$out/Applications/${appName}"
+      mv "$app" "$out/libexec/t3code"
+      ln -s ../libexec/t3code "$out/Applications/$app_name"
       makeWrapper \
-        "$out/Applications/${appName}/Contents/MacOS/${executable}" \
+        "$out/Applications/$app_name/Contents/MacOS/$executable" \
         "$out/bin/t3code" \
         --set T3CODE_DISABLE_AUTO_UPDATE 1
 

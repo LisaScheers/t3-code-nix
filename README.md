@@ -144,7 +144,7 @@ dist-tag. The updater accepts a release only when the exact npm version and
 GitHub release tag match and all expected desktop artifacts exist.
 
 Prebuilt clients repackage the immutable GitHub release assets. Prebuilt
-servers install the exact `t3@version` npm package with a committed lock file.
+servers repackage the self-contained CLI archives from the same GitHub release.
 Source packages fetch the matching Git tag and use pinned pnpm, Cargo, Node,
 and Electron inputs from Nixpkgs. Client and server selectors share the
 expensive source build and resource-monitor derivation.
@@ -168,7 +168,7 @@ nix develop -c ./scripts/update-releases all
 ```
 
 An incomplete upstream release leaves the repository unchanged. A successful
-update refreshes the source, pnpm, Cargo, npm, and desktop artifact hashes. CI
+update refreshes the source, pnpm, Cargo, server, and desktop artifact hashes. CI
 opens one long-lived pull request per channel and enables squash auto-merge
 after all package and module checks pass.
 

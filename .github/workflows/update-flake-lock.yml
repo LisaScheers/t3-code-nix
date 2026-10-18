@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: "Checking out repository..."
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.T3CODE_UPDATE_TOKEN }}
 
       - name: "Installing and configuring the nix package manager..."
         uses: cachix/install-nix-action@v31
@@ -30,12 +32,7 @@ jobs:
         uses: DeterminateSystems/update-flake-lock@main
         with:
           pr-title: "Automated action - Update flake.lock"
+          token: ${{ secrets.T3CODE_UPDATE_TOKEN }}
           pr-labels: |
             dependencies
             automated
-
-          # NOTE You can use a personal access token to identify
-          # as a concrete user, this may be useful when you want to
-          # trigger additional CI actions.
-          #
-          # token: ${{ secrets.GH_TOKEN_FOR_UPDATES }}

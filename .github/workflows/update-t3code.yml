@@ -39,7 +39,7 @@ jobs:
           body: |
             Updates the pinned T3 Code ${{ matrix.channel }} client and server release.
 
-            The updater verified the npm package, GitHub tag, required desktop artifacts, and all Nix dependency hashes before changing the repository.
+            The updater verified the npm version, GitHub tag, required desktop and server artifacts, and all Nix dependency hashes before changing the repository.
           labels: dependencies,automated
       - name: Enable squash auto-merge
         if: steps.pull-request.outputs.pull-request-number != ''
