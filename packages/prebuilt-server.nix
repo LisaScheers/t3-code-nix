@@ -2,11 +2,8 @@
   autoPatchelfHook,
   fetchurl,
   lib,
-  libsecret,
   makeWrapper,
-  openssl,
   stdenv,
-  zlib,
   channel,
   release,
 }:
@@ -20,12 +17,7 @@ stdenv.mkDerivation {
   # Stripping the compiled executable removes its embedded application payload.
   dontStrip = true;
   nativeBuildInputs = [ makeWrapper ] ++ lib.optional stdenv.hostPlatform.isLinux autoPatchelfHook;
-  buildInputs = lib.optionals stdenv.hostPlatform.isLinux [
-    stdenv.cc.cc.lib
-    libsecret
-    openssl
-    zlib
-  ];
+  buildInputs = lib.optional stdenv.hostPlatform.isLinux stdenv.cc.cc.lib;
 
   installPhase = ''
     runHook preInstall
