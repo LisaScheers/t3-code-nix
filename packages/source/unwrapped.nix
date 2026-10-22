@@ -100,6 +100,8 @@ stdenv.mkDerivation (finalAttrs: {
       pnpmWorkspaces
       ;
     fetcherVersion = 4;
+    # pnpm 12 creates an unused global-store directory only on macOS.
+    preFixup = ''rm -rf "$storePath/v11/links"'';
     hash = release.pnpmHash;
   };
 

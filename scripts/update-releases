@@ -132,6 +132,7 @@ pkgs.fetchPnpmDeps {
   version = "${version}";
   pnpm = pkgs.pnpm_${pnpm_version%%.*};
   fetcherVersion = 4;
+  preFixup = ''rm -rf "\$storePath/v11/links"'';
   pnpmWorkspaces = [
     "@t3tools/monorepo"
     "t3..."

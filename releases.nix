@@ -38,7 +38,7 @@
     version = "0.1.2-nightly.20261022.3512";
     tag = "v0.1.2-nightly.20261022.3512";
     srcHash = "sha256-pDY0dGgaGR5qdUYqsnhqEUMT1De8lrYFJBACVIy5dms=";
-    pnpmHash = "sha256-rRD3wTm5CCXB8yPVThA+vasvI2KiKAM2eXRRw0kBBy4=";
+    pnpmHash = "sha256-eIhM5BHxf7dd6ZtbFSXFTNvQ7Z1kUa7KvhvnGu7K+sk=";
     cargoHash = "sha256-5cmG2daM1bVOA23gjjoalbx0fEL1hmqV6WZov0sUZp8=";
     pnpmVersion = "12.14.0";
     electronVersion = "44.9.3";
