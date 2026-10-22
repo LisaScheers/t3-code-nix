@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "usage: $0 stable|nightly|all" >&2
+  echo "usage: $0 stable|nightly|all [--refresh]" >&2
   exit 2
 }
 
@@ -11,6 +11,13 @@ case "$requested" in
   stable | nightly | all) ;;
   *) usage ;;
 esac
+refresh=false
+case "${2:-}" in
+  --refresh) refresh=true ;;
+  "") ;;
+  *) usage ;;
+esac
+[[ "$#" -le 2 ]] || usage
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
@@ -106,6 +113,7 @@ repo_root_json="$(jq -Rn --arg value "$repo_root" '$value')"
 prefetch_pnpm_hash() {
   local version="$1"
   local source_hash="$2"
+  local pnpm_version="$3"
   local expression
   expression="$(cat <<EOF
 let
@@ -122,7 +130,7 @@ pkgs.fetchPnpmDeps {
   inherit src;
   pname = "t3code-source";
   version = "${version}";
-  pnpm = pkgs.pnpm_11;
+  pnpm = pkgs.pnpm_${pnpm_version%%.*};
   fetcherVersion = 4;
   pnpmWorkspaces = [
     "@t3tools/monorepo"
@@ -181,7 +189,7 @@ for channel in "${channels[@]}"; do
 
   version="$(jq -r --arg tag "$dist_tag" '.[$tag]' <<<"$dist_tags")"
   current_version="$(jq -r --arg channel "$channel" '.[$channel].version' <<<"$release_data")"
-  if [[ "$version" == "$current_version" ]]; then
+  if [[ "$refresh" == false && "$version" == "$current_version" ]]; then
     echo "$channel is current at $version"
     continue
   fi
@@ -218,13 +226,12 @@ for channel in "${channels[@]}"; do
   linux_server="$(asset_record "$github_release" "t3-$version-linux-x64.tar.gz")"
   source_url="https://github.com/pingdotgg/t3code/archive/refs/tags/$tag.tar.gz"
   source_hash="$(nix store prefetch-file --json --unpack "$source_url" | jq -r .hash)"
-  pnpm_hash="$(prefetch_pnpm_hash "$version" "$source_hash")"
-  cargo_hash="$(prefetch_cargo_hash "$version" "$source_hash")"
-
   package_json="$(curl_json "https://raw.githubusercontent.com/pingdotgg/t3code/$tag/package.json")"
   desktop_package_json="$(curl_json "https://raw.githubusercontent.com/pingdotgg/t3code/$tag/apps/desktop/package.json")"
   pnpm_version="$(jq -r '.packageManager | sub("^pnpm@"; "")' <<<"$package_json")"
   electron_version="$(jq -r '.dependencies.electron' <<<"$desktop_package_json")"
+  pnpm_hash="$(prefetch_pnpm_hash "$version" "$source_hash" "$pnpm_version")"
+  cargo_hash="$(prefetch_cargo_hash "$version" "$source_hash")"
 
   record="$(
     jq -n \

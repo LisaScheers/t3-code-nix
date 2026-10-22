@@ -136,3 +136,19 @@ jobs:
               HOME="$(mktemp -d)" ELECTRON_RUN_AS_NODE=1 "$output/bin/t3code" --version
             fi
           done
+
+  merge-update:
+    needs: [evaluate, packages]
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && contains(fromJSON('["automation/update-stable", "automation/update-nightly", "automation/update-flake-lock"]'), github.head_ref)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Merge the checked update
+        env:
+          GH_TOKEN: ${{ secrets.T3CODE_UPDATE_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
+        run: gh pr merge "$PR_NUMBER" --squash --match-head-commit "$PR_SHA"

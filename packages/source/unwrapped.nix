@@ -14,7 +14,7 @@
   node-gyp,
   nodejs_24,
   pkg-config,
-  pnpm_11,
+  pnpm,
   pnpmBuildHook,
   pnpmConfigHook,
   python3,
@@ -25,7 +25,6 @@
 }:
 let
   appName = "T3 Code (Alpha)";
-  pnpm = pnpm_11;
   src = fetchFromGitHub {
     owner = "pingdotgg";
     repo = "t3code";

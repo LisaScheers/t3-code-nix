@@ -169,10 +169,13 @@ nix develop -c ./scripts/update-releases all
 
 An incomplete upstream release leaves the repository unchanged. A successful
 update refreshes the source, pnpm, Cargo, server, and desktop artifact hashes. CI
-opens one long-lived pull request per channel and enables squash auto-merge
-after all package and module checks pass.
+opens one long-lived pull request per channel. CI squash-merges it after all
+package and module checks pass.
 
 The workflow expects `T3CODE_UPDATE_TOKEN`: a GitHub App installation token or
 fine-grained bot token with repository contents and pull request write access.
 
-The weekly flake-input workflow remains separate from T3 Code release updates.
+Nixpkgs updates run daily at 03:43 UTC and follow the latest `nixos-unstable`.
+Each update refreshes release dependency hashes and opens a pull request.
+Automated release and Nixpkgs updates merge only after evaluation and all
+package checks pass, even when branch protection is not configured.

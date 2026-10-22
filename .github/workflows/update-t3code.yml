@@ -28,7 +28,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: nix develop -c ./scripts/update-releases "${{ matrix.channel }}"
       - name: Open or update the channel pull request
-        id: pull-request
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.T3CODE_UPDATE_TOKEN }}
@@ -41,8 +40,3 @@ jobs:
 
             The updater verified the npm version, GitHub tag, required desktop and server artifacts, and all Nix dependency hashes before changing the repository.
           labels: dependencies,automated
-      - name: Enable squash auto-merge
-        if: steps.pull-request.outputs.pull-request-number != ''
-        env:
-          GH_TOKEN: ${{ secrets.T3CODE_UPDATE_TOKEN }}
-        run: gh pr merge "${{ steps.pull-request.outputs.pull-request-number }}" --auto --squash

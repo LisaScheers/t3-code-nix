@@ -1,38 +1,40 @@
-# --- Periodically update flake inputs in flake.lock
 name: update-flake-lock
 
 on:
-  workflow_dispatch: # allows manual triggering from the Actions UI
+  workflow_dispatch:
   schedule:
-    - cron: "0 0 * * 0" # runs weekly on Sunday at 00:00
+    - cron: "43 3 * * *"
+
+concurrency:
+  group: update-flake-lock
 
 jobs:
   update-flake-lock:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - name: "Checking out repository..."
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          extra_nix_config: accept-flake-config = true
+      - name: Update nixos-unstable and dependency hashes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          nix flake update nixpkgs
+          if ! git diff --quiet -- flake.lock; then
+            nix develop -c ./scripts/update-releases all --refresh
+          fi
+      - name: Open or update the Nixpkgs pull request
+        uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.T3CODE_UPDATE_TOKEN }}
+          branch: automation/update-flake-lock
+          delete-branch: false
+          commit-message: "chore: update nixos-unstable"
+          title: "chore: update nixos-unstable"
+          body: |
+            Updates Nixpkgs to the latest nixos-unstable revision and refreshes
+            the stable and nightly release dependency hashes with its toolchains.
 
-      - name: "Installing and configuring the nix package manager..."
-        uses: cachix/install-nix-action@v31
-        with:
-          extra_nix_config: |
-            accept-flake-config = true
-
-      # NOTE: Alternatively you can use the DeterminateSystems nix installer
-      # - name: "Installing and configuring the nix package manager..."
-      #   uses: DeterminateSystems/nix-installer-action@main
-      #   with:
-      #     extra-conf: |
-      #       accept-flake-config = true
-
-      - name: "Updating flake.lock..."
-        uses: DeterminateSystems/update-flake-lock@main
-        with:
-          pr-title: "Automated action - Update flake.lock"
-          token: ${{ secrets.T3CODE_UPDATE_TOKEN }}
-          pr-labels: |
-            dependencies
-            automated
+            CI merges this update only after evaluation and all package checks pass.
+          labels: dependencies,automated

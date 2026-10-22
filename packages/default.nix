@@ -15,8 +15,12 @@ let
       electron =
         pkgs.${electronPackage}
           or (throw "T3 Code ${release.version} requires ${electronPackage}, which is missing from nixpkgs");
+      pnpmPackage = "pnpm_${lib.versions.major release.pnpmVersion}";
+      pnpm =
+        pkgs.${pnpmPackage}
+          or (throw "T3 Code ${release.version} requires ${pnpmPackage}, which is missing from nixpkgs");
 
-      sourceUnwrapped = pkgs.callPackage ./source/unwrapped.nix { inherit electron release; };
+      sourceUnwrapped = pkgs.callPackage ./source/unwrapped.nix { inherit electron pnpm release; };
       resourceMonitor = pkgs.callPackage ./source/resource-monitor.nix {
         inherit release sourceUnwrapped;
       };
