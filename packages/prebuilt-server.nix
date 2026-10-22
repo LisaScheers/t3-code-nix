@@ -16,6 +16,8 @@ stdenv.mkDerivation {
   dontBuild = true;
   # Stripping the compiled executable removes its embedded application payload.
   dontStrip = true;
+  dontPatchELF = true;
+  dontAutoPatchelf = true;
   nativeBuildInputs = [ makeWrapper ] ++ lib.optional stdenv.hostPlatform.isLinux autoPatchelfHook;
   buildInputs = lib.optional stdenv.hostPlatform.isLinux stdenv.cc.cc.lib;
 
@@ -25,9 +27,18 @@ stdenv.mkDerivation {
     mkdir -p "$out/lib/t3code" "$out/bin"
     cp -r . "$out/lib/t3code/"
     makeWrapper "$out/lib/t3code/t3" "$out/bin/t3" \
-      --set T3CODE_DISABLE_AUTO_UPDATE 1
+      --set T3CODE_DISABLE_AUTO_UPDATE 1 \
+      ${lib.optionalString stdenv.hostPlatform.isLinux "--prefix LD_LIBRARY_PATH : ${
+        lib.makeLibraryPath [ stdenv.cc.cc.lib ]
+      }"}
 
     runHook postInstall
+  '';
+
+  postFixup = lib.optionalString stdenv.hostPlatform.isLinux ''
+    # Rewriting the SEA executable's RPATH corrupts its load segments.
+    patchelf --set-interpreter ${stdenv.cc.bintools.dynamicLinker} "$out/lib/t3code/t3"
+    autoPatchelf "$out/lib/t3code/node_modules" "$out/lib/t3code/resource-monitor"
   '';
 
   meta = {
