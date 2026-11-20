@@ -39,7 +39,7 @@ jobs:
             system: aarch64-linux
             clients: t3code-source t3code-nightly-source
             servers: t3code-server t3code-server-nightly t3code-server-source t3code-server-nightly-source
-          - runner: macos-14
+          - runner: macos-15
             system: aarch64-darwin
             clients: t3code t3code-nightly t3code-source t3code-nightly-source
             servers: t3code-server t3code-server-nightly t3code-server-source t3code-server-nightly-source
