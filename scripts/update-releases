@@ -209,10 +209,20 @@ for channel in "${channels[@]}"; do
     exit 1
   fi
 
+  # Releases since v0.1.10 publish unversioned AppImage names per channel.
+  appimage_asset="T3-Code-$version-x86_64.AppImage"
+  if ! jq -e --arg name "$appimage_asset" '.assets[] | select(.name == $name)' <<<"$github_release" >/dev/null; then
+    if [[ "$channel" == stable ]]; then
+      appimage_asset="T3-Code-x86_64.AppImage"
+    else
+      appimage_asset="T3-Code-Nightly-x86_64.AppImage"
+    fi
+  fi
+
   for required_asset in \
     "T3-Code-$version-arm64.zip" \
     "T3-Code-$version-x64.zip" \
-    "T3-Code-$version-x86_64.AppImage" \
+    "$appimage_asset" \
     "T3-Code-$version-x64.exe"; do
     if ! jq -e --arg name "$required_asset" '.assets[] | select(.name == $name)' <<<"$github_release" >/dev/null; then
       echo "$tag is incomplete: missing $required_asset" >&2
@@ -221,7 +231,7 @@ for channel in "${channels[@]}"; do
   done
 
   darwin_asset="$(asset_record "$github_release" "T3-Code-$version-arm64.zip")"
-  linux_asset="$(asset_record "$github_release" "T3-Code-$version-x86_64.AppImage")"
+  linux_asset="$(asset_record "$github_release" "$appimage_asset")"
   darwin_server="$(asset_record "$github_release" "t3-$version-darwin-arm64.tar.gz")"
   arm_linux_server="$(asset_record "$github_release" "t3-$version-linux-arm64.tar.gz")"
   linux_server="$(asset_record "$github_release" "t3-$version-linux-x64.tar.gz")"

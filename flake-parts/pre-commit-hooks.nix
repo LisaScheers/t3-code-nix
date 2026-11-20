@@ -32,12 +32,7 @@
             check-executables-have-shebangs.enable = true;
             check-added-large-files.enable = true;
 
-            gitleaks = {
-              enable = true;
-              name = "gitleaks";
-              entry = "${pkgs.gitleaks}/bin/gitleaks protect --verbose --redact --staged";
-              pass_filenames = false;
-            };
+            gitleaks.enable = true;
           };
         };
     };

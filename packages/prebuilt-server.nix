@@ -4,6 +4,7 @@
   lib,
   makeWrapper,
   stdenv,
+  vulkan-loader,
   channel,
   release,
 }:
@@ -19,7 +20,12 @@ stdenv.mkDerivation {
   dontPatchELF = true;
   dontAutoPatchelf = true;
   nativeBuildInputs = [ makeWrapper ] ++ lib.optional stdenv.hostPlatform.isLinux autoPatchelfHook;
-  buildInputs = lib.optional stdenv.hostPlatform.isLinux stdenv.cc.cc.lib;
+  buildInputs = lib.optionals stdenv.hostPlatform.isLinux [
+    stdenv.cc.cc.lib
+    vulkan-loader
+  ];
+  # The archives also bundle musl prebuilds that glibc systems never load.
+  autoPatchelfIgnoreMissingDeps = [ "libc.musl-*.so.1" ];
 
   installPhase = ''
     runHook preInstall
